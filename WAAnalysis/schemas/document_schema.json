@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Document Analysis",
+  "type": "object",
+  "properties": {
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "relationships": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["person", "role", "relationships"]
+      }
+    },
+    "sentiment": {
+      "type": "object",
+      "properties": {
+        "sentiment": {
+          "type": "string"
+        },
+        "polarity": {
+          "type": "number"
+        },
+        "subjectivity": {
+          "type": "number"
+        }
+      },
+      "required": ["sentiment", "polarity", "subjectivity"]
+    },
+    "key_points": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["topics", "entities", "sentiment", "key_points"]
+}
