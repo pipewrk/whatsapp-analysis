@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+message ReceiptInfo {
+    string jid = 1;        // Corresponds to field 1: "6581574286"
+    int32 status = 2;      // Corresponds to field 2: Status flag (0 or other integers)
+    int64 timestamp1 = 3;  // Corresponds to field 3: Optional timestamp
+    int64 timestamp2 = 4;  // Corresponds to field 4: Another possible timestamp
+}
