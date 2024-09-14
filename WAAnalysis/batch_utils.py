@@ -1,5 +1,8 @@
 import json
-import openai
+from openai import OpenAI
+from WAAnalysis.config import OPENAI_API_KEY
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 import logging
 from WAAnalysis.prompts import (
     create_topics_prompt,
@@ -24,7 +27,6 @@ from WAAnalysis.config import (
 )
 
 # Set OpenAI API key
-openai.api_key = OPENAI_API_KEY
 
 # Setup logging using the configuration from config.py
 log = logging.getLogger(__name__)
@@ -33,9 +35,11 @@ log = logging.getLogger(__name__)
 # --------------------------------------
 # Batch Input Generation Functions
 # --------------------------------------
+# Safely escape the content before saving
+def escape_json_string(input_string):
+    return input_string
 
 def generate_batch_input(file_name, prompt_type):
-    """Generates a batch input for a specific markdown file and prompt type."""
     file_path = MD_DIR / file_name
     document = file_path.read_text()
 
@@ -44,16 +48,14 @@ def generate_batch_input(file_name, prompt_type):
 
     # Select the appropriate prompt based on prompt_type
     if prompt_type == "topics":
-        system_prompt, user_prompt = create_topics_prompt(clean_text)
+        prompts = create_topics_prompt(clean_text)
     elif prompt_type == "entities":
-        system_prompt, user_prompt = create_entities_prompt(clean_text)
+        prompts = create_entities_prompt(clean_text)
     elif prompt_type == "sentiment":
-        system_prompt, user_prompt = create_sentiment_prompt(clean_text)
+        prompts = create_sentiment_prompt(clean_text)
     elif prompt_type == "key_points":
         # Key Points generation uses the context from the frontmatter
-        frontmatter = load_markdown(file_path)
-        combined_text = f"{frontmatter['topics']}\n{frontmatter['entity_relationships']}\n{frontmatter['overall_sentiment']}\n\n{clean_text}"
-        system_prompt, user_prompt = create_key_points_prompt(combined_text)
+        prompts = create_key_points_prompt(clean_text)
     else:
         raise ValueError("Invalid prompt type")
 
@@ -63,28 +65,23 @@ def generate_batch_input(file_name, prompt_type):
         "method": "POST",
         "url": "/v1/chat/completions",
         "body": {
-            "model": "gpt-4",
+            "model": "gpt-4o-mini",
             "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "system", "content": json.dumps(prompts["system"], ensure_ascii=False)},
+                {"role": "user", "content": json.dumps(prompts["user"], ensure_ascii=False)}
             ],
-            "max_tokens": 1000
+            "max_tokens": 300
         }
     }
-
-    if DEBUG:
-        log.debug(f"Generated batch input for {file_name}, type: {prompt_type}")
-
     return jsonl_line
-
 
 def write_jsonl_file(prompt_type, jsonl_line):
     """Writes a JSONL file for batch processing."""
     batch_folder = BATCH_INPUT_DIR / prompt_type
     batch_folder.mkdir(parents=True, exist_ok=True)
-    
+
     batch_file_path = batch_folder / f"{prompt_type}.jsonl"
-    
+
     # Append the jsonl line to the file
     save_to_json(jsonl_line, batch_file_path)
 
@@ -105,8 +102,8 @@ def upload_batch_file(file_path):
         return None
 
     with open(file_path, "rb") as file:
-        response = openai.File.create(file=file, purpose="batch")
-        return response['id']  # Return file ID for creating the batch
+        response = client.files.create(file=file, purpose="batch")
+        return response.id  # Return file ID for creating the batch
 
 
 def create_batch(input_file_id, description="Batch job"):
@@ -123,7 +120,7 @@ def create_batch(input_file_id, description="Batch job"):
     )
 
     if DEBUG:
-        log.debug(f"Batch created: {response['id']}")
+        log.debug(f"Batch created: {response.id}")
 
     return response  # Return Batch object with ID and status
 
@@ -131,7 +128,7 @@ def create_batch(input_file_id, description="Batch job"):
 def check_batch_status(batch_id):
     """Checks the status of a batch."""
     response = openai.Batch.retrieve(batch_id)
-    return response['status']  # Return batch status
+    return response.status  # Return batch status
 
 
 def download_batch_results(batch_id):
@@ -141,7 +138,7 @@ def download_batch_results(batch_id):
     if batch['status'] == "completed":
         output_file_id = batch['output_file_id']
         if output_file_id:
-            output_response = openai.File.download(output_file_id)
+            output_response = client.files.download(output_file_id)
             output_path = BATCH_OUTPUT_DIR / f"{batch_id}_output.jsonl"
             with open(output_path, 'wb') as f:
                 f.write(output_response)
@@ -160,7 +157,7 @@ def cancel_batch(batch_id):
         return None
 
     response = openai.Batch.cancel(batch_id)
-    log.info(f"Batch {batch_id} status: {response['status']}")
+    log.info(f"Batch {batch_id} status: {response.status}")
 
 
 def update_markdown_from_results(job):

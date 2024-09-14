@@ -3,6 +3,8 @@ from pathlib import Path
 import pytz
 from dotenv import load_dotenv
 import logging
+import colorlog
+
 
 # -------------------------------
 # Project Root and Timezone Config
@@ -66,11 +68,20 @@ ERROR_LOGS_DIRECTORY = DATA_DIR / 'error_logs'
 BLOB_INFO_DIRECTORY = DATA_DIR / 'blob_info'
 WHATSAPP_MESSAGES_FILE = DATA_DIR / 'whatsapp_messages_by_day.json'
 MD_DIR = DATA_DIR / 'markdown'
+MD_DIR2 = Path("/Users/jasonnathan/Documents/ChatGPT-Exports/md")
 
 # Directory for storage (e.g., SQLite database)
 STORAGE_DIR = PROJECT_ROOT / 'storage'
 DATABASE_PATH = STORAGE_DIR / 'ChatStorage.sqlite'
+CHUNKED_DIR = PROJECT_ROOT / "chunked"
+SUMMARY_DIR = PROJECT_ROOT / "summarized_chunked"
 
+# -------------------------------
+# Summarization Config
+# -------------------------------
+SUMMARY_LENGTH = 1000  # Tokens or words for the summary
+SUMMARY_MODEL = "phi3:medium-128k" 
+SUMMARY_LENGTH = 1000 
 
 # -------------------------------
 # Logging Config
@@ -87,10 +98,24 @@ logging.basicConfig(
     filemode='a'
 )
 
+# Set up colorlog for prettier console logs
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # Set console output to DEBUG by default
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
+console_handler.setLevel(logging.DEBUG)
+
+# Define colored formatter
+color_formatter = colorlog.ColoredFormatter(
+    "%(log_color)s%(asctime)s - %(levelname)s - %(message)s",
+    datefmt=None,
+    reset=True,
+    log_colors={
+        'DEBUG':    'cyan',
+        'INFO':     'green',
+        'WARNING':  'yellow',
+        'ERROR':    'red',
+        'CRITICAL': 'bold_red',
+    }
+)
+console_handler.setFormatter(color_formatter)
 
 # Add the console handler to the root logger
 logging.getLogger().addHandler(console_handler)
@@ -103,4 +128,4 @@ logging.getLogger().addHandler(console_handler)
 DEBUG = True
 
 # Enable/disable manual testing mode (e.g., to prevent actual API calls)
-MANUAL_TESTING = True
+MANUAL_TESTING = False
