@@ -3,7 +3,8 @@ import tiktoken
 import json
 import logging
 from pathlib import Path
-from WAAnalysis.config import MD_DIR, ERROR_LOGS_DIRECTORY
+from WAAnalysis.config import MD_DIR2, ERROR_LOGS_DIRECTORY
+# from WAAnalysis.config import MD_DIR, ERROR_LOGS_DIRECTORY
 from WAAnalysis.utils import ensure_directories_exist
 
 # -------------------------------
@@ -56,7 +57,7 @@ def count_tokens(text):
 def analyze_tokens_in_markdown():
     """Analyze token counts in markdown files and classify them into ranges."""
     token_counts = []
-    markdown_files = [f for f in MD_DIR.iterdir() if f.suffix == '.md']
+    markdown_files = [f for f in MD_DIR2.iterdir() if f.suffix == '.md']
 
     total_files = len(markdown_files)
     logging.info(f"Found {total_files} markdown files for token analysis.")

@@ -28,6 +28,20 @@ def read_file_content(file_path):
         log.error(f"Error reading file {file_path}: {e}")
         return None
 
+def sanitize_yaml_frontmatter(frontmatter):
+    """
+    Sanitize the YAML frontmatter to escape any problematic characters that could cause parsing issues.
+    """
+    sanitized_lines = []
+    for line in frontmatter.splitlines():
+        if ":" in line:
+            key, value = line.split(":", 1)
+            sanitized_value = value.strip().replace('"', '\\"').replace("'", "\\'")
+            sanitized_lines.append(f"{key}: {sanitized_value}")
+        else:
+            sanitized_lines.append(line)
+    return "\n".join(sanitized_lines)
+
 def load_markdown(file_path):
     """Reads a markdown file and splits the frontmatter and body content."""
     try:
@@ -36,7 +50,14 @@ def load_markdown(file_path):
 
         if content.startswith("---"):
             frontmatter, body = content.split('---', 2)[1:]
-            frontmatter = yaml.safe_load(frontmatter.strip())
+            try:
+                # First attempt to load the frontmatter normally
+                frontmatter = yaml.safe_load(frontmatter.strip())
+            except yaml.YAMLError as e:
+                # If there's an error in the YAML parsing, sanitize the frontmatter and try again
+                logging.warning(f"YAML parsing error in file {file_path}: {e}. Attempting to sanitize frontmatter.")
+                sanitized_frontmatter = sanitize_yaml_frontmatter(frontmatter.strip())
+                frontmatter = yaml.safe_load(sanitized_frontmatter)
         else:
             frontmatter = {}
             body = content
@@ -44,29 +65,39 @@ def load_markdown(file_path):
         return frontmatter, body.strip()
 
     except FileNotFoundError as e:
-        log.error(f"Markdown file not found: {file_path} - {e}")
+        logging.error(f"Markdown file not found: {file_path} - {e}")
         return {}, ""
 
-def update_markdown_frontmatter(file_path, document_data):
-    """Updates the markdown file's frontmatter with new values."""
-    frontmatter, body = load_markdown(file_path)
-
-    # Update frontmatter with new data
-    frontmatter.update({
-        'topics': document_data.get('topics', []),
-        'entity_relationships': document_data.get('entities', []),
-        'detailed_summary': document_data.get('key_points', []),
-        'overall_sentiment': document_data.get('sentiment', {}).get('sentiment', 'Unknown')
-    })
-
-    # Write the updated frontmatter and body back to the markdown file
+def update_markdown_frontmatter(file_path, frontmatter, body=None):
+    """
+    Writes the frontmatter and body back to the markdown file. If the body is None, 
+    it retains the existing body in the markdown file.
+    
+    Args:
+        file_path (Path): Path to the markdown file.
+        frontmatter (dict): The new frontmatter to update.
+        body (str, optional): The body of the markdown file. If not provided, the existing body remains unchanged.
+    """
     try:
+        # If body is not provided, load the existing body from the file
+        if body is None:
+            existing_frontmatter, body = load_markdown(file_path)
+            if not body:
+                log.error(f"Body content could not be retrieved for {file_path}.")
+                return
+
         with open(file_path, 'w') as f:
+            # Dump the frontmatter into YAML format
             new_frontmatter = yaml.dump(frontmatter, default_flow_style=False).strip()
+            # Write both the frontmatter and the body back to the file
             f.write(f"---\n{new_frontmatter}\n---\n\n{body}\n")
+        
         log.info(f"Updated frontmatter for {file_path}")
+    
     except Exception as e:
         log.error(f"Failed to update frontmatter for {file_path}: {e}")
+
+
 
 def save_to_json(data, file_path):
     """Saves data to a JSON file."""

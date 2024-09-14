@@ -1,5 +1,40 @@
-
+import ollama
 # Define system prompts with examples included for each task
+
+
+# Function to call the Ollama model for summary with a detailed prompt
+def summarize_text_with_ollama(text, model):
+    """
+    Summarizes the given text using the local Ollama model with an enhanced prompt.
+    """
+    # Enhanced prompt to guide the model
+    prompt = f"""
+You are summarizing a chunk of a markdown conversation between a user and an assistant.
+Your task is to strictly summarize the key points and important findings from the conversation in bullet point format. 
+Only provide the summary—nothing else. Do not add suggestions, comments, or extra words. 
+
+### Example Input:
+User: I want to discuss setting up a server with high availability.
+Assistant: Sure, we can look at redundancy and load balancing options.
+
+User: I'd also like to implement automated backups and failover strategies.
+Assistant: For backups, you can consider cloud storage or RAID solutions.
+
+### Example Output:
+- Discussion on server setup with high availability.
+- Considered redundancy and load balancing as options.
+- Automated backups and failover strategies were introduced.
+- Suggestions: cloud storage and RAID solutions for backups.
+
+Now, summarize the following text:
+{text}
+"""
+
+    response = ollama.generate(model=model, prompt=prompt, options={
+      "temperature": 0
+    })
+    return response['response']  # Adjust based on actual API response format
+
 
 # Topics Extraction
 topics_prompt_system = """
